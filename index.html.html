@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Тренировки</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --card-done: #14251c;
+    --border: #262b35;
+    --border-done: #2f6b4a;
+    --text: #e6e9ef;
+    --muted: #8b93a7;
+    --accent: #4ade80;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px; line-height: 1.4; }
+  body { padding-bottom: 120px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(15,17,21,0.92);
+    backdrop-filter: blur(8px);
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+  .sub { color: var(--muted); font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .sub .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .reset-btn {
+    margin-left: auto; background: none; border: 1px solid var(--border);
+    color: var(--muted); font-size: 12px; padding: 4px 10px; border-radius: 8px;
+    cursor: pointer;
+  }
+  .reset-btn:active { background: var(--border); }
+
+  main { padding: 12px; display: flex; flex-direction: column; gap: 10px; max-width: 720px; margin: 0 auto; }
+
+  .day {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+    transition: border-color .2s, background .2s;
+  }
+  .day.today { border-color: #3b4254; }
+  .day.done { background: var(--card-done); border-color: var(--border-done); }
+  .day.done .ex-list { opacity: 0.55; }
+
+  .day-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .day-name {
+    font-weight: 700; font-size: 15px; min-width: 34px;
+    color: var(--accent);
+  }
+  .day.done .day-name { color: #6ee7a8; }
+  .day-title { font-weight: 600; font-size: 14px; flex: 1; }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: #22273a; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .3px;
+  }
+  .badge.place-street { background: #2a2140; color: #c4a8ff; }
+  .badge.place-run { background: #3a2417; color: #f5a86b; }
+
+  .ex-list { list-style: none; padding: 0; margin: 0 0 12px; display: flex; flex-direction: column; gap: 7px; }
+  .ex-list li { display: flex; flex-direction: column; }
+  .ex-name { font-size: 13.5px; }
+  .ex-detail { font-size: 12px; color: var(--muted); }
+
+  .done-btn {
+    width: 100%; padding: 10px; border-radius: 10px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background .15s, border-color .15s;
+  }
+  .done-btn:active { transform: scale(0.99); }
+  .day.done .done-btn {
+    background: rgba(74,222,128,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* --- Таймер --- */
+  .timer-panel {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    background: #12151b; border-top: 1px solid var(--border);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .timer-top { display: flex; align-items: center; gap: 10px; }
+  .timer-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .timer-display {
+    font-variant-numeric: tabular-nums;
+    font-size: 28px; font-weight: 700; margin-left: auto; letter-spacing: 1px;
+  }
+  .timer-display.active { color: var(--warn); }
+  .timer-display.zero { color: var(--danger); }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .preset {
+    padding: 6px 10px; font-size: 12px; border-radius: 8px;
+    background: #1c2029; color: var(--muted); border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .preset.sel { background: #2a3248; color: var(--text); border-color: #3b4254; }
+  .timer-btns { display: flex; gap: 8px; }
+  .t-btn {
+    flex: 1; padding: 10px; border-radius: 10px; border: none;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+  .t-btn.start { background: var(--accent); color: #0a1f13; }
+  .t-btn.pause { background: var(--warn); color: #241800; }
+  .t-btn.reset { background: #262b35; color: var(--text); }
+
+  @media (max-width: 380px) {
+    .day-title { font-size: 13px; }
+    .timer-display { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Домашние тренировки</h1>
+  <div class="sub">
+    <span class="dot"></span>
+    <span id="weekLabel">Неделя</span>
+    <span id="progress" style="margin-left:auto;color:var(--muted);font-size:12px;"></span>
+    <button class="reset-btn" id="resetBtn">Сброс</button>
+  </div>
+</header>
+
+<main id="days"></main>
+
+<div class="timer-panel">
+  <div class="timer-top">
+    <span class="timer-label">Отдых</span>
+    <span class="timer-display" id="tDisplay">1:30</span>
+  </div>
+  <div class="presets" id="presets"></div>
+  <div class="timer-btns">
+    <button class="t-btn start" id="tStart">Старт</button>
+    <button class="t-btn reset" id="tReset">Сброс</button>
+  </div>
+</div>
+
+<script>
+/* ---------- Данные плана ---------- */
+const DAYS = [
+  {
+    id: 'mon', name: 'Пн', title: 'Грудь A + Спина A', place: 'дом',
+    exercises: [
+      { name: 'Жим штанги/гантелей лёжа на полу (Floor Press)', detail: '4 подхода, до RIR 1–2' },
+      { name: 'Тяга штанги в наклоне к поясу', detail: '4 × 8–12' },
+      { name: 'Отжимания от пола узким хватом', detail: '3 подхода до отказа' },
+      { name: 'Тяга гантели одной рукой в упоре', detail: '3 × 10–12 на руку' },
+    ]
+  },
+  {
+    id: 'tue', name: 'Вт', title: 'Руки + Плечи A', place: 'дом',
+    exercises: [
+      { name: 'Жим гантелей/штанги стоя', detail: '4 × 8–12' },
+      { name: 'Разведения гантелей в стороны', detail: '3 × 12–15' },
+      { name: 'Французский жим из-за головы', detail: '4 × 10–15' },
+      { name: 'Обратные отжимания от стула/дивана', detail: '3 подхода до отказа' },
+    ]
+  },
+  {
+    id: 'wed', name: 'Ср', title: 'Спина B + Грудь B', place: 'улица',
+    exercises: [
+      { name: 'Подтягивания на турнике', detail: '5 подходов по схеме 5-4-3-2-2' },
+      { name: 'Отжимания на брусьях', detail: '4 подхода до отказа' },
+      { name: 'Подтягивания обратным хватом', detail: '3 подхода до отказа' },
+      { name: 'Отжимания от пола широким хватом', detail: '3 подхода до отказа' },
+    ]
+  },
+  {
+    id: 'thu', name: 'Чт', title: 'Руки + Плечи B', place: 'дом',
+    exercises: [
+      { name: 'Подъём штанги на бицепс стоя', detail: '4 × 10–15, контроль негатива' },
+      { name: 'Подъём штанги обратным хватом', detail: '4 × 12–20' },
+      { name: 'Молотковые сгибания с гантелями', detail: '3 × 10–12' },
+      { name: 'Жим гантелей сидя/стоя', detail: '3 × 10–12' },
+    ]
+  },
+  {
+    id: 'fri', name: 'Пт', title: 'Грудь C + Спина C', place: 'дом',
+    exercises: [
+      { name: 'Жим гантелей лёжа на полу + разведение', detail: '3 × 12–15, медленный темп' },
+      { name: 'Тяга штанги в наклоне (лёгкая)', detail: '3 × 15–20' },
+      { name: 'Пуловер с гантелью лёжа на полу', detail: '3 × 12–15' },
+      { name: 'Отжимания от пола', detail: '3 подхода до отказа' },
+    ]
+  },
+  {
+    id: 'sat', name: 'Сб', title: 'Руки + Плечи C', place: 'дом',
+    exercises: [
+      { name: 'Подъём штанги на бицепс «21s»', detail: '3 подхода (7+7+7)' },
+      { name: 'Французский жим с гантелью из-за головы поочерёдно', detail: '3 × 10–12' },
+      { name: 'Махи гантелями в стороны', detail: '3 × 15–20' },
+      { name: 'Сгибание запястий со штангой сидя', detail: '3 подхода до отказа' },
+    ]
+  },
+  {
+    id: 'sun', name: 'Вс', title: 'Бег (активное восстановление)', place: 'бег',
+    exercises: [
+      { name: 'Бег', detail: '10–20 км, лёгкий темп, разминка обязательна' },
+    ]
+  },
+];
+
+/* ---------- Хранилище ---------- */
+const STORAGE_KEY = 'training_pwa_v1';
+
+function getWeekId(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { weekId: getWeekId(), done: {} };
+    const s = JSON.parse(raw);
+    if (s.weekId !== getWeekId()) return { weekId: getWeekId(), done: {} };
+    return s;
+  } catch (e) {
+    return { weekId: getWeekId(), done: {} };
+  }
+}
+
+let state = loadState();
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+/* ---------- Отрисовка ---------- */
+const daysEl = document.getElementById('days');
+const progressEl = document.getElementById('progress');
+const weekLabelEl = document.getElementById('weekLabel');
+
+const todayIdx = (new Date().getDay() + 6) % 7; // 0 = Пн
+
+function render() {
+  weekLabelEl.textContent = 'Неделя ' + state.weekId.split('-W')[1];
+  const doneCount = DAYS.filter(d => state.done[d.id]).length;
+  progressEl.textContent = doneCount + ' / 7 выполнено';
+
+  daysEl.innerHTML = '';
+  DAYS.forEach((d, idx) => {
+    const isDone = !!state.done[d.id];
+    const card = document.createElement('div');
+    card.className = 'day' +
+      (isDone ? ' done' : '') +
+      (idx === todayIdx ? ' today' : '');
+
+    const placeClass = d.place === 'улица' ? 'place-street'
+                     : d.place === 'бег' ? 'place-run' : '';
+    const placeLabel = d.place === 'улица' ? 'Улица'
+                     : d.place === 'бег' ? 'Бег' : 'Дом';
+
+    const exHTML = d.exercises.map(e =>
+      `<li><span class="ex-name">${e.name}</span><span class="ex-detail">${e.detail}</span></li>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="day-head">
+        <span class="day-name">${d.name}</span>
+        <span class="day-title">${d.title}</span>
+        <span class="badge ${placeClass}">${placeLabel}</span>
+      </div>
+      <ul class="ex-list">${exHTML}</ul>
+      <button class="done-btn" data-id="${d.id}">
+        ${isDone ? '✓ Выполнено' : 'Отметить выполненным'}
+      </button>
+    `;
+    daysEl.appendChild(card);
+  });
+
+  daysEl.querySelectorAll('.done-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      state.done[id] = !state.done[id];
+      if (!state.done[id]) delete state.done[id];
+      saveState();
+      render();
+      if (state.done[id] && navigator.vibrate) navigator.vibrate(30);
+    });
+  });
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Сбросить отметки всей недели?')) {
+    state.done = {};
+    saveState();
+    render();
+  }
+});
+
+/* ---------- Таймер ---------- */
+const PRESETS = [60, 90, 120, 180];
+let timer = { duration: 90, remaining: 90, running: false, iv: null };
+
+const tDisplay = document.getElementById('tDisplay');
+const presetsEl = document.getElementById('presets');
+const tStart = document.getElementById('tStart');
+const tReset = document.getElementById('tReset');
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function renderTimer() {
+  tDisplay.textContent = fmt(timer.remaining);
+  tDisplay.className = 'timer-display' +
+    (timer.remaining === 0 ? ' zero' : timer.running ? ' active' : '');
+  tStart.textContent = timer.running ? 'Пауза' : 'Старт';
+  tStart.className = 't-btn ' + (timer.running ? 'pause' : 'start');
+  presetsEl.querySelectorAll('.preset').forEach(p => {
+    p.classList.toggle('sel', +p.dataset.sec === timer.duration);
+  });
+}
+
+PRESETS.forEach(sec => {
+  const b = document.createElement('button');
+  b.className = 'preset';
+  b.dataset.sec = sec;
+  b.textContent = fmt(sec);
+  b.addEventListener('click', () => {
+    if (timer.running) stopTimer();
+    timer.duration = sec;
+    timer.remaining = sec;
+    renderTimer();
+  });
+  presetsEl.appendChild(b);
+});
+
+function stopTimer() {
+  timer.running = false;
+  if (timer.iv) { clearInterval(timer.iv); timer.iv = null; }
+  renderTimer();
+}
+
+function startTimer() {
+  if (timer.remaining <= 0) timer.remaining = timer.duration;
+  timer.running = true;
+  renderTimer();
+  timer.iv = setInterval(() => {
+    timer.remaining--;
+    if (timer.remaining <= 0) {
+      timer.remaining = 0;
+      stopTimer();
+      beep();
+    }
+    renderTimer();
+  }, 1000);
+}
+
+tStart.addEventListener('click', () => {
+  if (timer.running) stopTimer();
+  else startTimer();
+});
+tReset.addEventListener('click', () => {
+  stopTimer();
+  timer.remaining = timer.duration;
+  renderTimer();
+});
+
+/* Звук (создаётся по клику — разрешено браузером) */
+let audioCtx = null;
+function beep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    [0, 0.25].forEach((offset, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = 'sine';
+      o.frequency.value = i === 0 ? 880 : 1100;
+      g.gain.setValueAtTime(0.0001, t + offset);
+      g.gain.exponentialRampToValueAtTime(0.4, t + offset + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + offset + 0.25);
+      o.start(t + offset);
+      o.stop(t + offset + 0.3);
+    });
+  } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+}
+
+/* ---------- Старт ---------- */
+render();
+renderTimer();
+
+/* Регистрация service worker */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
